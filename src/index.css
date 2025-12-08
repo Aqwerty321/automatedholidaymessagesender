@@ -1,0 +1,16 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Base styles for the app */
+body {
+  @apply bg-slate-900 text-slate-100 antialiased;
+  min-height: 100vh;
+}
+
+/* Custom focus styles for better accessibility */
+input:focus,
+textarea:focus,
+select:focus {
+  @apply outline-none ring-2 ring-blue-500 ring-offset-2 ring-offset-slate-800;
+}
