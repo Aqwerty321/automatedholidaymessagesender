@@ -1,68 +1,30 @@
 /**
  * Configuration file for the Holiday Email Orchestrator.
  * 
- * ENVIRONMENT VARIABLES:
+ * WEBHOOK URL CONFIGURATION:
  * 
- * VITE_WEBHOOK_URL - The n8n webhook URL for sending holiday emails
- * VITE_API_BASE_URL - The backend API URL for logging email batches
- * VITE_ACCESS_PASSWORD_HINT - Optional hint for the login page
- * VITE_API_KEY_FRONTEND - API key for backend authentication
- * VITE_N8N_SECRET - Secret header for n8n webhook requests
+ * The webhook URL is loaded from the environment variable VITE_WEBHOOK_URL.
+ * This allows different URLs for local development vs production (Vercel).
  * 
  * LOCAL DEVELOPMENT:
  * 1. Create a `.env.local` file in the project root (it's gitignored).
- * 2. Add:
- *    VITE_WEBHOOK_URL=http://localhost:5678/webhook/<your-webhook-id>
- *    VITE_API_BASE_URL=http://localhost:4000
- *    VITE_API_KEY_FRONTEND=your-api-key
- *    VITE_N8N_SECRET=your-n8n-secret
+ * 2. Add: VITE_WEBHOOK_URL=http://localhost:5678/webhook/<your-webhook-id>
  * 3. Restart the dev server with `npm run dev`.
  * 
  * PRODUCTION (VERCEL):
- * Set all environment variables in Vercel project settings:
- * - VITE_WEBHOOK_URL = your public n8n webhook URL
- * - VITE_API_BASE_URL = your Render backend URL (e.g., https://holiday-backend.onrender.com)
- * - VITE_API_KEY_FRONTEND = matches API_KEY_FRONTEND on backend
- * - VITE_N8N_SECRET = matches N8N_WEBHOOK_SECRET in n8n
+ * Set the VITE_WEBHOOK_URL environment variable in Vercel project settings
+ * to your public n8n webhook URL (e.g., from ngrok or hosted n8n).
  * 
  * FALLBACK:
- * If variables are not set, they default to placeholder/localhost URLs.
+ * If VITE_WEBHOOK_URL is not set, it defaults to a placeholder URL.
+ * The app will show a warning banner if the URL contains "REPLACE_ME".
  */
 
 // ============================================================
-// Webhook URL - n8n endpoint for email generation + sending
+// Webhook URL - loaded from environment variable
 // ============================================================
 export const WEBHOOK_URL: string =
   import.meta.env.VITE_WEBHOOK_URL || "http://localhost:5678/webhook/REPLACE_ME";
-
-// ============================================================
-// API Base URL - Backend API for logging email batches
-// ============================================================
-export const API_BASE_URL: string =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:4000";
-
-// ============================================================
-// Security Configuration
-// ============================================================
-
-/**
- * Optional hint text displayed on the login page.
- */
-export const ACCESS_PASSWORD_HINT: string | undefined =
-  import.meta.env.VITE_ACCESS_PASSWORD_HINT;
-
-/**
- * API key for authenticating with the backend.
- * Must match API_KEY_FRONTEND on the backend.
- */
-export const API_KEY_FRONTEND: string =
-  import.meta.env.VITE_API_KEY_FRONTEND || "";
-
-/**
- * Secret header sent with n8n webhook requests.
- */
-export const N8N_SECRET: string =
-  import.meta.env.VITE_N8N_SECRET || "";
 
 /**
  * Helper to check if the webhook URL is properly configured.
@@ -70,13 +32,6 @@ export const N8N_SECRET: string =
  */
 export const isWebhookUrlUnconfigured = (): boolean => {
   return WEBHOOK_URL.includes("REPLACE_ME");
-};
-
-/**
- * Helper to check if security is properly configured.
- */
-export const isSecurityConfigured = (): boolean => {
-  return !!API_KEY_FRONTEND && !!N8N_SECRET;
 };
 
 /**
