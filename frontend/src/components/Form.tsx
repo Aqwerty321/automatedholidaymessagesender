@@ -1,9 +1,8 @@
 import { useState, FormEvent } from 'react';
 import { Field, inputStyles, selectStyles } from './Field';
 import { Alert } from './Alert';
-import { validateForm, FormFields, extractEmails } from '../lib/validation';
-import { LANGUAGE_OPTIONS, AUDIENCE_OPTIONS, API_BASE_URL, N8N_SECRET } from '../config';
-import { useAuth, getAuthHeaders, handleAuthError } from '../context/AuthContext';
+import { validateForm, FormFields } from '../lib/validation';
+import { LANGUAGE_OPTIONS, AUDIENCE_OPTIONS } from '../config';
 
 /**
  * Props for the Form component.
@@ -35,53 +34,10 @@ interface WebhookPayload {
 }
 
 /**
- * The payload structure for logging to the backend API.
- */
-interface LogBatchPayload {
-  holidayName: string;
-  tone: string | null;
-  audienceType: string | null;
-  language: string | null;
-  senderName: string;
-  recipients: string[];
-  status: 'queued' | 'sent' | 'error';
-  errorMessage?: string | null;
-}
-
-/**
- * Logs the email batch to the backend API.
- * This is a non-blocking operation - failures are logged but don't affect user experience.
- */
-async function logEmailBatch(payload: LogBatchPayload, token: string | null, onAuthError: () => void): Promise<void> {
-  try {
-    const response = await fetch(`${API_BASE_URL}/api/log-email-batch`, {
-      method: 'POST',
-      headers: getAuthHeaders(token),
-      body: JSON.stringify(payload),
-    });
-
-    if (!response.ok) {
-      if (handleAuthError(response)) {
-        onAuthError();
-        return;
-      }
-      console.warn('[LogBatch] Failed to log email batch:', response.status);
-    } else {
-      const data = await response.json();
-      console.log('[LogBatch] Logged batch:', data.batchId);
-    }
-  } catch (error) {
-    console.warn('[LogBatch] Error logging email batch:', error);
-  }
-}
-
-/**
  * Main form component for the Holiday Email Orchestrator.
  * Manages form state, validation, and submission to the webhook.
  */
 export function Form({ webhookUrl }: FormProps) {
-  const { token, logout } = useAuth();
-  
   // Form field state
   const [fields, setFields] = useState<FormFields>({
     holidayName: '',
@@ -130,9 +86,6 @@ export function Form({ webhookUrl }: FormProps) {
     setErrors({});
     setSubmission({ status: 'submitting' });
 
-    // Extract emails array for logging
-    const emailsArray = extractEmails(fields.recipients);
-
     // Build the payload for the webhook
     const payload: WebhookPayload = {
       holiday_name: fields.holidayName.trim(),
@@ -144,32 +97,16 @@ export function Form({ webhookUrl }: FormProps) {
     };
 
     try {
-      // Build headers for n8n webhook (includes secret)
-      const webhookHeaders: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
-      if (N8N_SECRET) {
-        webhookHeaders['X-N8N-SECRET'] = N8N_SECRET;
-      }
-
       const response = await fetch(webhookUrl, {
         method: 'POST',
-        headers: webhookHeaders,
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify(payload),
       });
 
       if (response.ok) {
-        // Success! Log to backend (non-blocking)
-        logEmailBatch({
-          holidayName: fields.holidayName.trim(),
-          tone: fields.tone.trim() || null,
-          audienceType: fields.audienceType || null,
-          language: fields.language || null,
-          senderName: fields.senderName.trim(),
-          recipients: emailsArray,
-          status: 'sent',
-        }, token, logout);
-
+        // Success!
         setSubmission({
           status: 'success',
           message: 'Request accepted! Emails will be generated and sent.',
@@ -192,37 +129,12 @@ export function Form({ webhookUrl }: FormProps) {
         } catch {
           // Ignore if we can't read the body
         }
-
-        // Log the error to backend (non-blocking)
-        logEmailBatch({
-          holidayName: fields.holidayName.trim(),
-          tone: fields.tone.trim() || null,
-          audienceType: fields.audienceType || null,
-          language: fields.language || null,
-          senderName: fields.senderName.trim(),
-          recipients: emailsArray,
-          status: 'error',
-          errorMessage: `HTTP ${response.status}${errorDetail}`,
-        }, token, logout);
-
         setSubmission({
           status: 'error',
           message: `Server error (HTTP ${response.status})${errorDetail}`,
         });
       }
     } catch (error) {
-      // Log the error to backend (non-blocking)
-      logEmailBatch({
-        holidayName: fields.holidayName.trim(),
-        tone: fields.tone.trim() || null,
-        audienceType: fields.audienceType || null,
-        language: fields.language || null,
-        senderName: fields.senderName.trim(),
-        recipients: emailsArray,
-        status: 'error',
-        errorMessage: 'Network error: Unable to reach automation server',
-      }, token, logout);
-
       // Network error or fetch failed
       setSubmission({
         status: 'error',
